@@ -29,14 +29,10 @@ public class CreditCard {
     @JsonIgnore
     private Client client;
 
-    @ManyToMany(mappedBy = "creditCards", fetch = FetchType.LAZY)
-    @JsonIgnore
-    private Set<Order> orders = new HashSet<>();
-
     public CreditCard() {
     }
 
-    public CreditCard(Long id, String number, String nameCard, Banner banner, String expirationDate, String securityCode, Client client, Set<Order> orders) {
+    public CreditCard(Long id, String number, String nameCard, Banner banner, String expirationDate, String securityCode, Client client) {
         this.setId(id);
         this.setNumber(number);
         this.setNameCard(nameCard);
@@ -44,7 +40,6 @@ public class CreditCard {
         this.setExpirationDate(expirationDate);
         this.setSecurityCode(securityCode);
         this.setClient(client);
-        this.setOrders(orders);
     }
 
     public Long getId() {
@@ -101,13 +96,5 @@ public class CreditCard {
 
     public void setBanner(Banner banner) {
         this.banner = banner;
-    }
-
-    public Set<Order> getOrders() {
-        return orders;
-    }
-
-    public void setOrders(Set<Order> orders) {
-        this.orders = orders;
     }
 }

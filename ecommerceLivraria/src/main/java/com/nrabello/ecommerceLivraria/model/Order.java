@@ -21,13 +21,8 @@ public class Order {
     @Enumerated(EnumType.STRING)
     private EOrderStatus status;
 
-    @ManyToMany(fetch = FetchType.EAGER)
-    @JoinTable(
-            name = "Pedido_CartaoCredito",
-            joinColumns = @JoinColumn(name = "ped_id"),
-            inverseJoinColumns = @JoinColumn(name = "car_id")
-    )
-    private Set<CreditCard> creditCards = new HashSet<>();
+    @OneToMany(fetch = FetchType.EAGER)
+    private Set<PaymentMethod> paymentMethods = new HashSet<>();
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     private List<OrderItem> orderItens = new ArrayList<>();
@@ -55,11 +50,11 @@ public class Order {
     public Order() {
     }
 
-    public Order(Long id, Client client, EOrderStatus status, Set<CreditCard> creditCards, List<OrderItem> orderItens, Set<TradeDevolutionCoupon> tradeDevolutionCoupons, PromotionalCoupon promotionalCoupon, Double totalValue, Date orderedOn) {
+    public Order(Long id, Client client, EOrderStatus status, Set<PaymentMethod> paymentMethods, List<OrderItem> orderItens, Set<TradeDevolutionCoupon> tradeDevolutionCoupons, PromotionalCoupon promotionalCoupon, Double totalValue, Date orderedOn) {
         this.id = id;
         this.client = client;
         this.status = status;
-        this.creditCards = creditCards;
+        this.paymentMethods = paymentMethods;
         this.orderItens = orderItens;
         this.tradeDevolutionCoupons = tradeDevolutionCoupons;
         this.promotionalCoupon = promotionalCoupon;
@@ -98,12 +93,12 @@ public class Order {
         this.status = status;
     }
 
-    public Set<CreditCard> getCreditCards() {
-        return creditCards;
+    public Set<PaymentMethod> getPaymentMethods() {
+        return paymentMethods;
     }
 
-    public void setCreditCards(Set<CreditCard> creditCards) {
-        this.creditCards = creditCards;
+    public void setPaymentMethods(Set<PaymentMethod> paymentMethods) {
+        this.paymentMethods = paymentMethods;
     }
 
     public Set<TradeDevolutionCoupon> getTradeDevolutionCoupons() {
