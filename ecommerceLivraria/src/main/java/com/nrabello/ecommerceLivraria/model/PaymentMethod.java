@@ -16,7 +16,7 @@ public class PaymentMethod {
     @JoinColumn(name="mtp_car_id", referencedColumnName = "car_id")
     private CreditCard creditCard;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "mtp_ped_id", referencedColumnName = "ped_id")
     @JsonIgnore
     private Order order;

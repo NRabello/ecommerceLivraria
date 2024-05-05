@@ -7,32 +7,35 @@ import { useRouter } from 'next/navigation';
 
 export default function OrdersPage() {
     const router = useRouter();
-    const [orderStatus, setOrderStatus] = useState<EOrderStatus>();
     const [orders, setOrders] = useState<Order[]>([])
     const orderService = new OrderService();
 
 
 
     useEffect(() => {
+        fetchOrders();
+    }, []);
+
+    const fetchOrders = () => {
         orderService.findByClient(2).then((response) => {
             setOrders(response.data);
         }).catch((error) => {
             alert('Erro ao buscar pedidos!: ' + error);
         });
-    }, []);
+    };
 
     const CancelarCompra = async (order: Order) => {
-        if (order.status === 'ENTREGUE') {
+        if (order.status === EOrderStatus.ENTREGUE) {
             alert('Pedido já entregue, não é possível cancelar!');
             return;
         }
 
         if (window.confirm('Tem certeza de que deseja cancelar o pedido?')) {
             try {
-                setOrderStatus(EOrderStatus.CANCELADO);
+                order.status = EOrderStatus.CANCELADO;
                 await orderService.save(order);
                 alert('Pedido cancelado com sucesso!');
-                router.push('/');
+                fetchOrders();
             } catch (error) {
                 alert('Erro ao cancelar pedido!: ' + error);
             }
@@ -40,21 +43,28 @@ export default function OrdersPage() {
     };
 
     const trocarProduto = (order: Order) => {
-        if (order.status === 'entregue') {
-            console.log(order.status)
+        if (order.status === EOrderStatus.ENTREGUE) {
             if (window.confirm('Tem certeza de que deseja cancelar o pedido?')) {
                 alert('Solicitação de troca realizada com sucesso!' + '\n' + 'Utilize o cupom: TROCA para usar o valor da troca em sua próxima compra!');
-                setOrderStatus(EOrderStatus.EM_TROCA);
+               // setOrderStatus(EOrderStatus.EM_TROCA);
+            } else {
+                return;
             }
         } else {
             alert('Pedido ainda não entregue, não é possível trocar!');
         }
     }
 
-    const devolverProduto = (order: Order) => {
-        if (order.status === 'entregue') {
-            alert('Solicitação de devolução realizada com sucesso!' + '\n' + 'Utilize o cupom: DEVOLUCAO para usar o valor da devolução em sua próxima compra!');
-            setOrderStatus(EOrderStatus.EM_DEVOLUCAO);
+    const devolverProduto = async (order: Order) => {
+        if (order.status === EOrderStatus.ENTREGUE) {
+            if (window.confirm('Tem certeza de que deseja devolver o pedido?')) {
+                order.status = EOrderStatus.EM_DEVOLUCAO;
+                await orderService.save(order);
+                alert('Solicitação de devolução realizada com sucesso!');
+                fetchOrders();
+            } else {
+                return;
+            }
         } else {
             alert('Pedido ainda não entregue, não é possível devolver!');
         }
@@ -71,6 +81,17 @@ export default function OrdersPage() {
                             <div className="data">
                                 <p className="font-semibold text-base leading-7 text-black">Id do Pedido: <span className="text-indigo-600 font-medium">#{order.id}</span></p>
                                 <p className="font-semibold text-base leading-7 text-black mt-4">Data do Pagamento: <span className="text-gray-600 font-medium">{new Date(order.orderedOn).toLocaleDateString('pt-BR')}</span></p>
+                            </div>
+                            <div>
+                                <p className="font-semibold text-base leading-7 text-black">Cupons utilizados:</p>
+                                {order.tradeDevolutionCoupons.map((cupom, index) => (
+                                    <div key={index}>
+                                        <p>{cupom.name}: R$ {cupom.value}</p>
+                                    </div>
+                                ))}
+                                <p>
+                                    {order.promotionalCoupon.name} : {order.promotionalCoupon.value}%
+                                </p>
                             </div>
                         </div>
                         <div className="w-full px-3 min-[400px]:px-6">
@@ -103,14 +124,18 @@ export default function OrdersPage() {
                                                 <div className="col-span-5 lg:col-span-2 flex items-center max-lg:mt-3 ">
                                                     <div className="flex gap-3 lg:block">
                                                         <p className="font-medium text-sm leading-7 text-black">Status</p>
-                                                        <p>Em Processamento</p>
+                                                        <p>{order.status}</p>
                                                     </div>
                                                 </div>
                                                 <div className="col-span-5 lg:col-span-2 flex items-center max-lg:mt-3">
                                                     <div className="flex gap-3 lg:block">
-                                                        <p className="font-medium text-sm whitespace-nowrap leading-6 text-black">
-                                                            Entrega prevista: <span className="text-emerald-500 font-medium">{new Date(new Date(order.orderedOn).getTime() + (15 * 24 * 60 * 60 * 1000)).toLocaleDateString('pt-BR')}</span>
-                                                        </p>
+                                                        <button
+                                                            id="btn-troca"
+                                                            className='bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded mt-4'
+                                                            onClick={() => trocarProduto(order)}
+                                                        >
+                                                            Troca
+                                                        </button>
                                                     </div>
                                                 </div>
                                             </div>
@@ -133,17 +158,17 @@ export default function OrdersPage() {
                                     </svg>
                                     Cancelar Pedido
                                 </button>
-                                <p className="font-medium text-lg text-gray-900 pl-6 py-3 max-lg:text-center">Pago com cartão final 8822</p>
-                                <button
-                                    id="btn-troca"
-                                    className=' ml-48 bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded'
-                                    onClick={() => trocarProduto(order)}
-                                >
-                                    Troca
-                                </button>
+                                <div className="ml-4 py-2">
+                                    <p className="font-semibold text-base leading-7 text-black">Pago com cartão(s) final:</p>
+                                    {order.paymentMethods.map((method, index) => (
+                                        <div key={index}>
+                                            {method.creditCard.number.slice(-4)} : R$ {method.value}
+                                        </div>
+                                    ))}
+                                </div>
                                 <button
                                     id="btn-devolucao"
-                                    className='ml-10 bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded'
+                                    className='ml-96 bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded'
                                     onClick={() => devolverProduto(order)}
                                 >
                                     Devolução

@@ -21,8 +21,8 @@ public class Order {
     @Enumerated(EnumType.STRING)
     private EOrderStatus status;
 
-    @OneToMany(fetch = FetchType.EAGER)
-    private Set<PaymentMethod> paymentMethods = new HashSet<>();
+    @OneToMany(fetch = FetchType.EAGER, mappedBy = "order", cascade = CascadeType.ALL)
+    private Set<PaymentMethod> paymentMethods  = new HashSet<>();
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     private List<OrderItem> orderItens = new ArrayList<>();

@@ -5,13 +5,13 @@ import { CreditCard } from "./CreditCard";
 import { DeliveryAddress } from "./DeliveryAddress";
 import { OrderItem } from "./OrderItem";
 import { EOrderStatus } from "./EOrderStatus";
+import { PaymentMethod } from "./PaymentMethod";
 
 export interface IOrder{
     id?: number;
     client?: Client
     status?: EOrderStatus;
-    //temporaryDeliveryAddress?: DeliveryAddress;
-    creditCards?: CreditCard[];
+    paymentMethods?: PaymentMethod[];
     orderItens?: OrderItem[];
     tradeDevolutionCoupons?: TradeDevolutionCoupon[];
     promotionalCoupon?: PromotionalCoupon;
@@ -23,8 +23,7 @@ export class Order {
     public id: number;
     public client: Client;
     public status: EOrderStatus;
-    //public temporaryDeliveryAddress: DeliveryAddress;
-    public creditCards: CreditCard[];
+    public paymentMethods : PaymentMethod[];
     public orderItens: OrderItem[];
     public tradeDevolutionCoupons: TradeDevolutionCoupon[];
     public promotionalCoupon: PromotionalCoupon;
@@ -35,8 +34,7 @@ export class Order {
         id = 0,
         client = new Client({}),
         status = EOrderStatus.EM_PROCESSAMENTO,
-        //temporaryDeliveryAddress = new DeliveryAddress({}),
-        creditCards = [],
+        paymentMethods = [],
         orderItens = [],
         tradeDevolutionCoupons = [],
         promotionalCoupon = new PromotionalCoupon({}),
@@ -46,8 +44,7 @@ export class Order {
         this.id = id;
         this.client = client;
         this.status = status;
-        //this.temporaryDeliveryAddress = temporaryDeliveryAddress;
-        this.creditCards = creditCards;
+        this.paymentMethods = paymentMethods;
         this.orderItens = orderItens;
         this.tradeDevolutionCoupons = tradeDevolutionCoupons;
         this.promotionalCoupon = promotionalCoupon;

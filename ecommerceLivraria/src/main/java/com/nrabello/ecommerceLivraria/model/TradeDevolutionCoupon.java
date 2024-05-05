@@ -27,15 +27,20 @@ public class TradeDevolutionCoupon {
     @JsonIgnore
     private Set<Order> orders = new HashSet<>();
 
+    @ManyToOne
+    @JoinColumn(name = "ctd_cli_id", referencedColumnName = "cli_id")
+    private Client client;
+
     public TradeDevolutionCoupon(){
 
     }
-    public TradeDevolutionCoupon(Long id, String name, Double value, Boolean used ,Set<Order> orders) {
+    public TradeDevolutionCoupon(Long id, String name, Double value, Boolean used ,Set<Order> orders, Client client) {
         this.setId(id);
         this.setName(name);
         this.setValue(value);
         this.setUsed(used);
         this.setOrders(orders);
+        this.setClient(client);
     }
 
     public Long getId() {
@@ -75,5 +80,13 @@ public class TradeDevolutionCoupon {
     }
     public void setOrders(Set<Order> orders) {
         this.orders = orders;
+    }
+
+    public Client getClient() {
+        return client;
+    }
+
+    public void setClient(Client client) {
+        this.client = client;
     }
 }

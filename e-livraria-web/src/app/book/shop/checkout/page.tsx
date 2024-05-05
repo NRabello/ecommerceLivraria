@@ -14,14 +14,20 @@ import { OrderService } from '@/services/OrderService';
 import { PromotionalCouponService } from '@/services/PromotionalCouponService';
 import { Order } from '@/models/Order';
 import { PromotionalCoupon } from '@/models/PromotionalCoupon';
+import { PaymentMethod } from '@/models/PaymentMethod';
+import { TradeDevolutionCouponService } from '@/services/TradeDevolutionCouponService';
+import { TradeDevolutionCoupon } from '@/models/TradeDevolutionCoupon';
 
 
 export default function Checkout() {
     const [isAddressModalOpen, setAddressModalOpen] = useState(false);
     const [isCreditCardModalOpen, setCreditCardModalOpen] = useState(false);
+    const [isPaymentMethodModalOpen, setPaymentMethodModalOpen] = useState(false);
+    const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
     const [selectedAddress, setSelectedAddress] = useState<DeliveryAddress>();
-    const [selectedCreditCard, setSelectedCreditCard] = useState<CreditCard>();
+    const [selectedsCreditCards, setSelectedsCreditCards] = useState<CreditCard[]>([]);
     const [newAddress, setNewAddress] = useState<DeliveryAddress>(new DeliveryAddress({}));
+    const [tradeDevolutionCoupons, setTradeDevolutionCoupons] = useState<TradeDevolutionCoupon[]>([]);
     const [newCard, setNewCard] = useState<CreditCard>(new CreditCard({}));
     const [CardBanners, setCardBanners] = useState<Banner[]>([]);
     const [keepAddressSaved, setKeepAddressSaved] = useState(false);
@@ -30,11 +36,12 @@ export default function Checkout() {
     const [promotionalCoupon, setPromotionalCoupon] = useState<PromotionalCoupon>(new PromotionalCoupon({}));
     const [client, setClient] = useState<Client>();
     const [total, setTotal] = useState(0);
-    const { checkout, addOneToCheckout, addSeveralToCheckout ,removeFromCheckout, updateQuantity } = useCheckout();
+    const { checkout, addOneToCheckout, addSeveralToCheckout, removeFromCheckout, updateQuantity } = useCheckout();
     const promotionalCouponService = new PromotionalCouponService();
     const clientService = new ClientService();
     const bannerService = new BannerService();
     const orderService = new OrderService();
+    const tradeDevolutionCouponService = new TradeDevolutionCouponService();
     const router = useRouter();
 
     useEffect(() => {
@@ -44,6 +51,7 @@ export default function Checkout() {
             console.log(error);
         });
         fetchBanners();
+        fetchTradeDevolutionCoupons();
     }, []);
 
     useEffect(() => {
@@ -54,6 +62,7 @@ export default function Checkout() {
         });
         fetchBanners();
         fetchTotal();
+        fetchTradeDevolutionCoupons();
     }, [checkout]);
 
     const fetchBanners = async () => {
@@ -63,6 +72,17 @@ export default function Checkout() {
             setCardBanners(CardBanners);
         } catch (error) {
             console.error('Error fetching banners:', error);
+        }
+    };
+
+    const fetchTradeDevolutionCoupons = async () => {
+        try {
+            if (!client) return;
+            const response = await tradeDevolutionCouponService.findByClient(client.id);
+            const tradeDevolutionCoupons = response.data;
+            setTradeDevolutionCoupons(tradeDevolutionCoupons);
+        } catch (error) {
+            console.error('Error fetching trade devolution coupons:', error);
         }
     };
 
@@ -82,12 +102,12 @@ export default function Checkout() {
 
     const handleCupom = () => {
         promotionalCouponService.filter(cupomValue).then((response) => {
-            if(response.data.length === 0){
+            if (response.data.length === 0) {
                 alert("Cupom inválido!")
             }
             const coupon: PromotionalCoupon = response.data[0];
             setPromotionalCoupon(coupon);
-            setTotal(total - (total * coupon.value / 100));
+            setTotal(Math.round(total - (total * coupon.value / 100)));
         }).catch((error) => {
             console.log(error);
         });
@@ -99,8 +119,14 @@ export default function Checkout() {
     };
 
     const handleCreditCardSelection = (card: CreditCard) => {
-        console.log(card);
-        setSelectedCreditCard(card);
+        const isSelected = selectedsCreditCards.some(selectedCard => selectedCard.id === card.id);
+        if (isSelected) {
+            setSelectedsCreditCards(prevSelectedCards => prevSelectedCards.filter(selectedCard => selectedCard.id !== card.id));
+            setPaymentMethods(prevPaymentMethods => prevPaymentMethods.filter(paymentMethod => paymentMethod.creditCard.id !== card.id));
+        } else {
+            setSelectedsCreditCards(prevSelectedCards => [...prevSelectedCards, card]);
+            setPaymentMethods(prevPaymentMethods => [...prevPaymentMethods, new PaymentMethod({ creditCard: card, value: 0 })]);
+        }
     };
 
     const handleRemoveProduct = (product: OrderItem) => {
@@ -117,6 +143,14 @@ export default function Checkout() {
 
         setNewAddress(updatedAddress);
     }
+
+    const handleValueChange = (index: number, value: number) => {
+        setPaymentMethods(prevPaymentMethods => {
+            const updatedMethods = [...prevPaymentMethods];
+            updatedMethods[index].value = value;
+            return updatedMethods;
+        });
+    };
 
     const handleCardChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
@@ -178,21 +212,50 @@ export default function Checkout() {
             alert('Selecione um endereço!');
             return;
         }
-        if (!selectedCreditCard) {
+        if (selectedsCreditCards?.length === 0) {
             alert('Selecione um cartão de crédito!');
             return;
         }
-        await orderService.save(new Order({
-            client: client,
-            //temporaryDeliveryAddress: selectedAddress,
-            creditCards: [selectedCreditCard],
-            orderItens: checkout,
-            totalValue: total,
-            promotionalCoupon: promotionalCoupon
-        }));
-        alert('Compra realizada com sucesso!');
-        router.push('/client/orders')
-    }
+
+        if (selectedsCreditCards.length === 1) {
+            const [selectedCard] = selectedsCreditCards;
+            const paymentMethod = new PaymentMethod({ creditCard: selectedCard, value: total });
+            await saveOrder([paymentMethod]);
+        } else {
+            setPaymentMethodModalOpen(true);
+        }
+    };
+
+    const saveOrder = async (paymentMethods: PaymentMethod[]) => {
+        const totalPaymentValue = paymentMethods.reduce((acc, curr) => acc + curr.value, 0);
+
+        if (totalPaymentValue !== total) {
+            alert('A soma dos valores dos métodos de pagamento não corresponde ao total da compra.');
+            return;
+        }
+
+        paymentMethods.forEach(paymentMethod => {
+            if (paymentMethod.value < 10) {
+                alert('O valor mínimo para pagamento em cada cartão é de R$ 10,00.');
+                return;
+            }
+        })
+
+        try {
+            await orderService.save(new Order({
+                client: client,
+                paymentMethods: paymentMethods,
+                orderItens: checkout,
+                totalValue: total,
+                promotionalCoupon: promotionalCoupon
+            }));
+            alert('Compra realizada com sucesso!');
+            router.push('/client/orders');
+        } catch (error) {
+            console.error('Erro ao salvar pedido:', error);
+            alert('Erro ao salvar pedido. Por favor, tente novamente.');
+        }
+    };
 
     const saveAddress = () => {
         if (!validateAddress()) {
@@ -272,7 +335,7 @@ export default function Checkout() {
                             <h2 className="text-xl font-semibold mb-2 mt-4">Cartões de Crédito</h2>
                             <div className="flex space-x-4">
                                 {client?.creditCards.map((card, index) => (
-                                    <div id={`creditCard-${index}`} key={index} className={`bg-gray-100 p-2 rounded-md w-48 ${selectedCreditCard && selectedCreditCard.id === card.id ? 'border border-blue-500' : ''}`} onClick={() => handleCreditCardSelection(card)}>
+                                    <div id={`creditCard-${index}`} key={index} className={`bg-gray-100 p-2 rounded-md w-48 ${selectedsCreditCards.some(selectedCard => selectedCard.id === card.id) ? 'border border-blue-500' : ''}`} onClick={() => handleCreditCardSelection(card)}>
                                         <p className='font-semibold'>{card.nameCard}</p>
                                         <p>{card.number}</p>
                                         <p>{card.banner.name}</p>
@@ -348,7 +411,12 @@ export default function Checkout() {
                         </div>
                         <div className="mt-4">
                             <div className="mt-4 ml-4 mb-4">
-                                <input id="cupom" name="cupom" type="text" className="border rounded-md px-3 py-2" onChange={(e) => setCupomValue(e.target.value)} placeholder="Digite o cupom" />
+                                <input list="cupomList" id="cupom" name="cupom" type="text" className="border rounded-md px-3 py-2" onChange={(e) => setCupomValue(e.target.value)} placeholder="Digite o cupom" />
+                                <datalist id="cupomList">
+                                    {tradeDevolutionCoupons.map((cupom) => (
+                                        <option key={cupom.id} value={cupom.name}>{cupom.name}</option>
+                                    ))}
+                                </datalist>
                                 <button id="btn-aplicar-cupom" className="bg-blue-500 text-white px-4 py-2 rounded mt-2 ml-80" onClick={handleCupom}>Aplicar Cupom</button>
                             </div>
                             <div className="flex justify-between text-base font-semibold text-gray-900 ml-4 mr-4">
@@ -605,6 +673,35 @@ export default function Checkout() {
                                 </div>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+            {isPaymentMethodModalOpen && (
+                <div className="fixed inset-0 flex items-center justify-center z-50">
+                    <div className="absolute inset-0 bg-gray-900 opacity-50"></div>
+                    <div className="bg-white p-6 md:w-1/2 lg:w-1/3 rounded-lg shadow-lg z-10">
+                        <h2 className="text-xl font-semibold mb-4">Inserir valores de cada Cartão</h2>
+                        <p className="text-xl font-semibold mb-4"> Total: R$ {total.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+                        {selectedsCreditCards.map((card, index) => (
+                            <div key={index} className="mb-4">
+                                <h3>{card.nameCard} - {card.number}</h3>
+                                <input
+                                    type="number"
+                                    value={paymentMethods[index]?.value || ''}
+                                    onChange={e => handleValueChange(index, parseFloat(e.target.value))}
+                                    className="border-gray-300 border rounded-md w-full p-2"
+                                    placeholder='Mínimo R$ 10,00'
+                                />
+                            </div>
+                        ))}
+                        <div className='flex justify-between'>
+                            <button onClick={() => setPaymentMethodModalOpen(false)} className="px-4 py-2 mr-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400 focus:outline-none">
+                                Voltar
+                            </button>
+                            <button onClick={() => saveOrder(paymentMethods)} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 focus:outline-none">
+                                Salvar
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

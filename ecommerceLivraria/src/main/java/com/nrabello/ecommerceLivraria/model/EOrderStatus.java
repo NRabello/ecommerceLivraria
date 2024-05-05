@@ -9,6 +9,7 @@ public enum EOrderStatus {
     EM_TROCA,
     EM_DEVOLUCAO,
     TROCA_AUTORIZADA,
+    PRODUTOS_RECEBIDOS,
     EM_TRANSPORTE,
     TROCADO,
     CANCELADO,

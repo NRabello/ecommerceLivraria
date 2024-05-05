@@ -3,6 +3,7 @@ package com.nrabello.ecommerceLivraria.strategy.Order;
 import com.nrabello.ecommerceLivraria.database.OrderDao;
 import com.nrabello.ecommerceLivraria.model.Order;
 import com.nrabello.ecommerceLivraria.model.OrderItem;
+import com.nrabello.ecommerceLivraria.model.PaymentMethod;
 import com.nrabello.ecommerceLivraria.strategy.IStrategy;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -21,6 +22,10 @@ public class SaveOrderStrategy implements IStrategy<Order> {
 
         for (OrderItem orderItem : model.getOrderItens()){
             orderItem.setOrder(model);
+        }
+
+        for (PaymentMethod paymentMethod : model.getPaymentMethods()){
+            paymentMethod.setOrder(model);
         }
 
         orderDao.save(model);

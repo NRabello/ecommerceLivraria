@@ -8,6 +8,6 @@ import java.util.List;
 
 public interface OrderRepository extends JpaRepository<Order, Long> {
 
-    @Query("SELECT o FROM Order o WHERE o.client.id = :id")
+    @Query("SELECT o FROM Order o WHERE o.client.id = :id AND o.status != 'CANCELADO' AND o.status != 'DEVOLVIDO'")
     List<Order> findAllByClient(Long id);
 }

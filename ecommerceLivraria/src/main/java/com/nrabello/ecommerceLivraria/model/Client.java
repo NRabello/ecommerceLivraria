@@ -1,5 +1,6 @@
 package com.nrabello.ecommerceLivraria.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 
 import java.util.ArrayList;
@@ -37,10 +38,14 @@ public class Client {
     @Column(name="cli_ativo")
     private boolean active;
 
+    @OneToMany(mappedBy = "client", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+    @JsonIgnore
+    private List<TradeDevolutionCoupon> tradeDevolutionCoupons = new ArrayList<>();
+
     public Client() {
     }
 
-    public Client(Long id, String name, String gender, String dateBirth, String cpf, Phone phone, String email, String password, List<ChargeAddress> chargeAddresses, List<DeliveryAddress> deliveryAddresses,List<CreditCard> creditCards, int ranking, boolean active) {
+    public Client(Long id, String name, String gender, String dateBirth, String cpf, Phone phone, String email, String password, List<ChargeAddress> chargeAddresses, List<DeliveryAddress> deliveryAddresses,List<CreditCard> creditCards, int ranking, boolean active, List<TradeDevolutionCoupon> tradeDevolutionCoupons) {
         this.setId(id);
         this.setName(name);
         this.setGender(gender);
@@ -54,6 +59,7 @@ public class Client {
         this.setCreditCards(creditCards);
         this.setRanking(ranking);
         this.setActive(active);
+        this.setTradeDevolutionCoupons(tradeDevolutionCoupons);
     }
 
     public Long getId() {
@@ -152,11 +158,19 @@ public class Client {
         this.ranking = ranking;
     }
 
-    public boolean getActive() {
+    public void setActive(boolean active) {
+        this.active = active;
+    }
+
+    public boolean isActive() {
         return active;
     }
 
-    public void setActive(boolean active) {
-        this.active = active;
+    public List<TradeDevolutionCoupon> getTradeDevolutionCoupons() {
+        return tradeDevolutionCoupons;
+    }
+
+    public void setTradeDevolutionCoupons(List<TradeDevolutionCoupon> tradeDevolutionCoupons) {
+        this.tradeDevolutionCoupons = tradeDevolutionCoupons;
     }
 }

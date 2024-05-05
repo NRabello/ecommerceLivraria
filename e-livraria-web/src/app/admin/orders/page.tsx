@@ -4,24 +4,31 @@ import { Order } from '@/models/Order';
 import { useRouter } from 'next/navigation';
 import { OrderService } from '@/services/OrderService';
 import { EOrderStatus } from '@/models/EOrderStatus';
+import { TradeDevolutionCoupon } from '@/models/TradeDevolutionCoupon';
+import { TradeDevolutionCouponService } from '@/services/TradeDevolutionCouponService';
 
 export default function AdminOrdersPage() {
     const router = useRouter();
     const [orders, setOrders] = useState<Order[]>([]); // Supondo que order seja uma lista de pedidos
     const [selectedStatus, setSelectedStatus] = useState<EOrderStatus>();
     const orderService = new OrderService();
+    const tradeDevolutionCouponService = new TradeDevolutionCouponService();
 
     const handleStatusChange = (orderId: number, newStatus: EOrderStatus) => {
         setSelectedStatus(newStatus);
     };
 
     useEffect(() => {
-        orderService.findByClient(2).then((response) => {
+        fetchOrders();
+    }, []);
+
+    const fetchOrders = () => {
+        orderService.findAll().then((response) => {
             setOrders(response.data);
         }).catch((error) => {
             alert('Erro ao buscar pedidos!: ' + error);
         });
-    }, []);
+    };
 
     const getStatusOptions = (status: EOrderStatus): EOrderStatus[] => {
         switch (status) {
@@ -39,28 +46,58 @@ export default function AdminOrdersPage() {
                 return [EOrderStatus.EM_TRANSPORTE, EOrderStatus.CANCELADO];
             case EOrderStatus.REPROVADA:
                 return [EOrderStatus.EM_PROCESSAMENTO];
-            case EOrderStatus.TROCA_NEGADA:
-                return [EOrderStatus.EM_TROCA];
             default:
                 return [];
         }
     };
 
     const saveStatusChange = (orderId: number) => {
-        if (!selectedStatus) {
+        if (!selectedStatus || selectedStatus === orders.find(order => order.id === orderId)?.status) {
             alert('Por favor, selecione um status válido antes de salvar.');
             return;
         }
 
-        const updatedOrders = orders.map(order => {
-            if (order.id === orderId) {
-                return { ...order, status: selectedStatus };
-            } else {
-                return order;
-            }
+        const updatedOrder = orders.find(order => order.id === orderId);
+        if (!updatedOrder) {
+            alert('Pedido não encontrado.');
+            return;
+        }
+    
+        updatedOrder.status = selectedStatus;
+    
+        orderService.save(updatedOrder).then(() => {
+            alert(`Status do pedido ${orderId} alterado para ${selectedStatus}.`);
+            generateDevolutionCoupon(orderId);
+            fetchOrders();
+        }).catch(error => {
+            alert(`Ocorreu um erro ao salvar o status do pedido ${orderId}`);
+            fetchOrders();
+            return;
         });
-        setOrders(updatedOrders);
-        alert(`Status do pedido ${orderId} alterado para ${selectedStatus}.`);
+    };
+
+    const generateDevolutionCoupon = (orderId: number) => {
+        const updatedOrder = orders.find(order => order.id === orderId);
+        if (!updatedOrder) {
+            alert('Pedido não encontrado.');
+            return;
+        }
+        
+        if(selectedStatus === EOrderStatus.DEVOLVIDO) {
+            const devolutionCoupon: TradeDevolutionCoupon = new TradeDevolutionCoupon({
+                name: `DEVOLUCAO${orders.find(order => order.id === orderId)?.totalValue}`,
+                value: updatedOrder.totalValue,
+                client: updatedOrder.client,
+                used: false
+            });
+            console.log(updatedOrder.client)
+            tradeDevolutionCouponService.save(devolutionCoupon).then(() => {
+                alert(`Cupom de devolução gerado com sucesso!`);
+            }).catch(error => {
+                alert(`Ocorreu um erro ao gerar o cupom de devolução: ${error.message}`);
+                return;
+            });
+        }
     };
 
     return (
