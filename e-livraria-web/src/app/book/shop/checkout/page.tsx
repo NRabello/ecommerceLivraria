@@ -17,6 +17,7 @@ import { PromotionalCoupon } from '@/models/PromotionalCoupon';
 import { PaymentMethod } from '@/models/PaymentMethod';
 import { TradeDevolutionCouponService } from '@/services/TradeDevolutionCouponService';
 import { TradeDevolutionCoupon } from '@/models/TradeDevolutionCoupon';
+import Image from 'next/image';
 
 
 export default function Checkout() {
@@ -28,6 +29,7 @@ export default function Checkout() {
     const [selectedsCreditCards, setSelectedsCreditCards] = useState<CreditCard[]>([]);
     const [newAddress, setNewAddress] = useState<DeliveryAddress>(new DeliveryAddress({}));
     const [tradeDevolutionCoupons, setTradeDevolutionCoupons] = useState<TradeDevolutionCoupon[]>([]);
+    const [usedTradeDevolutionCoupons, setUsedTradeDevolutionCoupons] = useState<TradeDevolutionCoupon[]>([]);
     const [newCard, setNewCard] = useState<CreditCard>(new CreditCard({}));
     const [CardBanners, setCardBanners] = useState<Banner[]>([]);
     const [keepAddressSaved, setKeepAddressSaved] = useState(false);
@@ -35,7 +37,7 @@ export default function Checkout() {
     const [cupomValue, setCupomValue] = useState('');
     const [promotionalCoupon, setPromotionalCoupon] = useState<PromotionalCoupon>(new PromotionalCoupon({}));
     const [client, setClient] = useState<Client>();
-    const [total, setTotal] = useState(0);
+    const [total, setTotal] = useState(parseFloat((0).toFixed(2)));
     const { checkout, addOneToCheckout, addSeveralToCheckout, removeFromCheckout, updateQuantity } = useCheckout();
     const promotionalCouponService = new PromotionalCouponService();
     const clientService = new ClientService();
@@ -45,25 +47,27 @@ export default function Checkout() {
     const router = useRouter();
 
     useEffect(() => {
-        clientService.findById(2).then((response) => {
-            setClient(response.data);
-        }).catch((error) => {
-            console.log(error);
-        });
+        fetchClient();
         fetchBanners();
-        fetchTradeDevolutionCoupons();
     }, []);
 
     useEffect(() => {
-        clientService.findById(2).then((response) => {
+        fetchClient();
+        fetchBanners();
+        fetchTotal();
+    }, [checkout]);
+
+    useEffect(() => {
+        fetchTradeDevolutionCoupons();
+    }, [client]);
+
+    const fetchClient = async () => {
+        await clientService.findById(2).then((response) => {
             setClient(response.data);
         }).catch((error) => {
             console.log(error);
         });
-        fetchBanners();
-        fetchTotal();
-        fetchTradeDevolutionCoupons();
-    }, [checkout]);
+    }
 
     const fetchBanners = async () => {
         try {
@@ -103,11 +107,45 @@ export default function Checkout() {
     const handleCupom = () => {
         promotionalCouponService.filter(cupomValue).then((response) => {
             if (response.data.length === 0) {
-                alert("Cupom inválido!")
+                tradeDevolutionCoupons.forEach((cupom) => {
+                    if (cupom.name !== cupomValue) {
+                        alert("Cupom invalido!")
+                        return;
+                    } else {
+                        usedTradeDevolutionCoupons.map((usedCupom) => {
+                            if (usedCupom.name === cupomValue) {
+                                alert("Cupom já utilizado!")
+                                return;
+                            }
+                        });
+                        if (total < cupom.value) {
+                            alert("Valor do cupom maior que o total!")
+                            return;
+                        } else {
+                            alert("Cupom de troca aplicado com sucesso!")
+                            setTotal(total - cupom.value);
+                            setUsedTradeDevolutionCoupons([...usedTradeDevolutionCoupons, cupom]);
+                            const cupomInput = document.getElementById('cupom') as HTMLInputElement | null
+                            if (cupomInput) {
+                                cupomInput.value = '';
+                            }
+                        }
+                    }
+                });
+            } else {
+                const coupon: PromotionalCoupon = response.data[0];
+                if (promotionalCoupon.id === coupon.id) {
+                    alert("Cupom já utilizado!")
+                    return;
+                }
+                alert("Cupom aplicado com sucesso!")
+                setPromotionalCoupon(coupon);
+                setTotal(total - (total * coupon.value / 100));
+                const cupomInput = document.getElementById('cupom') as HTMLInputElement | null
+                if (cupomInput) {
+                    cupomInput.value = '';
+                }
             }
-            const coupon: PromotionalCoupon = response.data[0];
-            setPromotionalCoupon(coupon);
-            setTotal(Math.round(total - (total * coupon.value / 100)));
         }).catch((error) => {
             console.log(error);
         });
@@ -151,6 +189,12 @@ export default function Checkout() {
             return updatedMethods;
         });
     };
+
+    const removeAllCoupons = () => {
+        setPromotionalCoupon(new PromotionalCoupon({}));
+        setUsedTradeDevolutionCoupons([]);
+        fetchTotal();
+    }
 
     const handleCardChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
@@ -229,7 +273,7 @@ export default function Checkout() {
     const saveOrder = async (paymentMethods: PaymentMethod[]) => {
         const totalPaymentValue = paymentMethods.reduce((acc, curr) => acc + curr.value, 0);
 
-        if (totalPaymentValue !== total) {
+        if (totalPaymentValue.toFixed(2) !== total.toFixed(2)) {
             alert('A soma dos valores dos métodos de pagamento não corresponde ao total da compra.');
             return;
         }
@@ -247,10 +291,18 @@ export default function Checkout() {
                 paymentMethods: paymentMethods,
                 orderItens: checkout,
                 totalValue: total,
-                promotionalCoupon: promotionalCoupon
+                promotionalCoupon: promotionalCoupon,
+                tradeDevolutionCoupons: usedTradeDevolutionCoupons,
             }));
             alert('Compra realizada com sucesso!');
             router.push('/client/orders');
+
+            if(usedTradeDevolutionCoupons.length > 0){
+                usedTradeDevolutionCoupons.forEach((cupom) => {
+                    cupom.used = true;
+                    tradeDevolutionCouponService.save(cupom);
+                })
+            }
         } catch (error) {
             console.error('Erro ao salvar pedido:', error);
             alert('Erro ao salvar pedido. Por favor, tente novamente.');
@@ -274,6 +326,28 @@ export default function Checkout() {
                 });
             }
         }
+    }
+
+    const removePromotionalCoupon = () => {
+        setPromotionalCoupon(new PromotionalCoupon({}));
+        if (usedTradeDevolutionCoupons.length != 0) {
+            fetchTotal();
+            usedTradeDevolutionCoupons.map((usedCupom) => {
+                setTotal(prevTotal => prevTotal - usedCupom.value)
+            });
+        } else {
+            fetchTotal();
+        }
+    }
+
+    const RemoveUsedTradeCupom = (id: number) => {
+        const usedCupom = usedTradeDevolutionCoupons.find(cupom => cupom.id === id);
+        if (!usedCupom) return;
+        setUsedTradeDevolutionCoupons(prevUsedCupons => prevUsedCupons.filter(cupom => cupom.id !== id));
+        if (promotionalCoupon) {
+            setTotal((total + usedCupom.value) - (total * promotionalCoupon.value / 100));
+        }
+        setTotal(total + usedCupom.value);
     }
 
     const saveCard = () => {
@@ -417,9 +491,35 @@ export default function Checkout() {
                                         <option key={cupom.id} value={cupom.name}>{cupom.name}</option>
                                     ))}
                                 </datalist>
-                                <button id="btn-aplicar-cupom" className="bg-blue-500 text-white px-4 py-2 rounded mt-2 ml-80" onClick={handleCupom}>Aplicar Cupom</button>
+                                <button id="btn-remove-cupom" className="bg-red-500 text-white px-4 py-2 rounded mt-2 ml-36 mr-4" onClick={() => removeAllCoupons()}>Remover Cupons</button>
+                                <button id="btn-aplicar-cupom" className="bg-blue-500 text-white px-4 py-2 rounded mt-2" onClick={handleCupom}>Aplicar Cupom</button>
                             </div>
-                            <div className="flex justify-between text-base font-semibold text-gray-900 ml-4 mr-4">
+                            <div className="ml-5 flex">
+                                {promotionalCoupon.name && (
+                                    <div className='ml-2 flex items-center w-fit rounded-lg px-2 py-1 border border-slate-300 hover:bg-slate-300' onClick={() => {/*removePromotionalCoupon()*/ }}>
+                                        <p className='w-fit mr-2'>{promotionalCoupon.name}</p>
+                                        {/* <Image
+                                        src={"/fechar.png"}
+                                        alt="ícone fechar"
+                                        width={24}
+                                        height={24}
+                                    /> */}
+                                    </div>
+                                )}
+                                {usedTradeDevolutionCoupons.map(usedCupom => (
+                                    <div key={usedCupom.id} className='ml-2 flex items-center w-fit rounded-lg px-2 py-1 border border-slate-300 hover:bg-slate-300' onClick={() => {/*RemoveUsedTradeCupom(usedCupom.id)*/ }}>
+                                        <p className='w-fit mr-2'>{usedCupom.name}</p>
+                                        {/* <Image
+                                            src={"/fechar.png"}
+                                            alt="ícone fechar"
+                                            width={24}
+                                            height={24}
+                                        /> */}
+                                    </div>
+                                ))}
+                            </div>
+
+                            <div className="flex justify-between text-base font-semibold text-gray-900 ml-4 mr-4 mt-4">
                                 <p>Subtotal</p>
                                 <p>R$ {subtotal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
                             </div>
@@ -429,7 +529,7 @@ export default function Checkout() {
                             </div>
                             <div className="flex justify-between text-lg font-semibold text-gray-900 ml-4 mr-4 mb-4">
                                 <p>Total</p>
-                                <p id="valor-total">R$ {total.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+                                <p id="valor-total">R$ {total.toFixed(2)}</p>
                             </div>
                             <hr className='mt-2' />
                             <div className='w-full mr-4 ml-7 mb-4'>
@@ -681,7 +781,7 @@ export default function Checkout() {
                     <div className="absolute inset-0 bg-gray-900 opacity-50"></div>
                     <div className="bg-white p-6 md:w-1/2 lg:w-1/3 rounded-lg shadow-lg z-10">
                         <h2 className="text-xl font-semibold mb-4">Inserir valores de cada Cartão</h2>
-                        <p className="text-xl font-semibold mb-4"> Total: R$ {total.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+                        <p className="text-xl font-semibold mb-4"> Total: R$ {total.toFixed(2)}</p>
                         {selectedsCreditCards.map((card, index) => (
                             <div key={index} className="mb-4">
                                 <h3>{card.nameCard} - {card.number}</h3>

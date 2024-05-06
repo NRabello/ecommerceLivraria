@@ -263,7 +263,7 @@ export default function Client() {
                         <p><strong>Cartão {index + 1}:</strong></p>
                         <p><strong>Número:</strong> {creditCard.number}</p>
                         <p><strong>Nome:</strong> {creditCard.nameCard}</p>
-                        <p><strong>Bandeira:</strong> {creditCard.cardBanner.name}</p>
+                        <p><strong>Bandeira:</strong> {creditCard.banner.name}</p>
                         <p><strong>Data de Expiração:</strong> {creditCard.expirationDate}</p>
                         <p><strong>Código de Segurança:</strong> {creditCard.securityCode}</p>
                       </div>
