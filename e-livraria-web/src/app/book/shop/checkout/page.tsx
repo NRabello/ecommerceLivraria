@@ -777,7 +777,7 @@ export default function Checkout() {
                 </div>
             )}
             {isPaymentMethodModalOpen && (
-                <div className="fixed inset-0 flex items-center justify-center z-50">
+                <div id="payment-modal" className="fixed inset-0 flex items-center justify-center z-50">
                     <div className="absolute inset-0 bg-gray-900 opacity-50"></div>
                     <div className="bg-white p-6 md:w-1/2 lg:w-1/3 rounded-lg shadow-lg z-10">
                         <h2 className="text-xl font-semibold mb-4">Inserir valores de cada Cartão</h2>
@@ -786,6 +786,7 @@ export default function Checkout() {
                             <div key={index} className="mb-4">
                                 <h3>{card.nameCard} - {card.number}</h3>
                                 <input
+                                    id={`value-card-${index}`}
                                     type="number"
                                     value={paymentMethods[index]?.value || ''}
                                     onChange={e => handleValueChange(index, parseFloat(e.target.value))}
@@ -795,7 +796,7 @@ export default function Checkout() {
                             </div>
                         ))}
                         <div className='flex justify-between'>
-                            <button onClick={() => setPaymentMethodModalOpen(false)} className="px-4 py-2 mr-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400 focus:outline-none">
+                            <button id="btn-fechar-modal-metodoPagamento"onClick={() => setPaymentMethodModalOpen(false)} className="px-4 py-2 mr-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400 focus:outline-none">
                                 Voltar
                             </button>
                             <button onClick={() => saveOrder(paymentMethods)} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 focus:outline-none">

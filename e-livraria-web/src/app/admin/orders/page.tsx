@@ -67,14 +67,42 @@ export default function AdminOrdersPage() {
     
         orderService.save(updatedOrder).then(() => {
             alert(`Status do pedido ${orderId} alterado para ${selectedStatus}.`);
-            generateDevolutionCoupon(orderId);
-            fetchOrders();
+            if(updatedOrder.status === EOrderStatus.TROCADO){
+                generateTradeCoupon(orderId);
+            }else if(updatedOrder.status === EOrderStatus.DEVOLVIDO){
+                generateDevolutionCoupon(orderId);
+            }
+            fetchOrders();        
         }).catch(error => {
             alert(`Ocorreu um erro ao salvar o status do pedido ${orderId}`);
             fetchOrders();
             return;
         });
     };
+
+    const generateTradeCoupon = (orderId: Number) => {
+        const updatedOrder = orders.find(order => order.id === orderId);
+        if (!updatedOrder) {
+            alert('Pedido não encontrado.');
+            return;
+        }
+        
+        if(selectedStatus === EOrderStatus.TROCADO) {
+            const tradeCoupon: TradeDevolutionCoupon = new TradeDevolutionCoupon({
+                name: `TROCA${orders.find(order => order.id === orderId)?.totalValue}`,
+                value: updatedOrder.totalValue,
+                client: updatedOrder.client,
+                used: false
+            });
+            console.log(updatedOrder.client)
+            tradeDevolutionCouponService.save(tradeCoupon).then(() => {
+                alert(`Cupom de troca gerado com sucesso!`);
+            }).catch(error => {
+                alert(`Ocorreu um erro ao gerar o cupom de Troca: ${error.message}`);
+                return;
+            });
+        }
+    }
 
     const generateDevolutionCoupon = (orderId: number) => {
         const updatedOrder = orders.find(order => order.id === orderId);

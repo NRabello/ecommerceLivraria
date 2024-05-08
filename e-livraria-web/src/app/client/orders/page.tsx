@@ -4,10 +4,15 @@ import { Order } from '@/models/Order';
 import { OrderService } from '@/services/OrderService';
 import { EOrderStatus } from '@/models/EOrderStatus';
 import { useRouter } from 'next/navigation';
+import { OrderItem } from '@/models/OrderItem';
+import { PaymentMethod } from '@/models/PaymentMethod';
 
 export default function OrdersPage() {
     const router = useRouter();
     const [orders, setOrders] = useState<Order[]>([])
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+    const [selectedProducts, setSelectedProducts] = useState<OrderItem[]>([]);
     const orderService = new OrderService();
 
 
@@ -43,10 +48,50 @@ export default function OrdersPage() {
     };
 
     const trocarProduto = (order: Order) => {
-        if (order.status === EOrderStatus.ENTREGUE) {
-            if (window.confirm('Tem certeza de que deseja cancelar o pedido?')) {
-                alert('Solicitação de troca realizada com sucesso!' + '\n' + 'Utilize o cupom: TROCA para usar o valor da troca em sua próxima compra!');
-               // setOrderStatus(EOrderStatus.EM_TROCA);
+        setSelectedOrder(order);
+        setIsModalOpen(true);
+    }
+
+    const confirmarTroca = async () => {
+        if (selectedOrder && selectedOrder.status === EOrderStatus.ENTREGUE) {
+            if (window.confirm('Tem certeza de que deseja trocar o pedido?')) {
+                if(selectedProducts.length === selectedOrder.orderItens.length){
+                    selectedOrder.status = EOrderStatus.EM_TROCA;
+                    await orderService.save(selectedOrder);
+                    fetchOrders()
+                    alert("Solicitação de troca realizada com sucesso!")
+                    setIsModalOpen(false);
+                }else{
+                    const newOrder = new Order(selectedOrder);
+                    const updatedSelectedOrder = selectedOrder;
+                    newOrder.id = 0;
+                    newOrder.status = EOrderStatus.APROVADA;
+                    newOrder.orderItens = []
+                    selectedProducts.forEach(product => {
+                        newOrder.orderItens.push(
+                            new OrderItem({
+                                book: product.book,
+                                quantity: product.quantity,
+                                value: product.value
+                            })
+                        );
+                    });
+                    newOrder.paymentMethods = []
+                    selectedOrder.paymentMethods.forEach(paymentMethod =>{
+                        newOrder.paymentMethods.push(
+                            new PaymentMethod({
+                                creditCard: paymentMethod.creditCard,
+                                value: paymentMethod.value 
+                            })
+                        )
+                    })
+                    updatedSelectedOrder.status = EOrderStatus.TROCADO;
+                    await orderService.save(newOrder);
+                    await orderService.save(updatedSelectedOrder);
+                    fetchOrders();
+                    alert("Solicitação de troca realizada com sucesso!")
+                    setIsModalOpen(false);
+                }
             } else {
                 return;
             }
@@ -54,6 +99,16 @@ export default function OrdersPage() {
             alert('Pedido ainda não entregue, não é possível trocar!');
         }
     }
+
+    const toggleProductSelection = (product: OrderItem) => {
+        setSelectedProducts(prevSelectedProducts => {
+            if (prevSelectedProducts.includes(product)) {
+                return prevSelectedProducts.filter(id => id !== product);
+            } else {
+                return [...prevSelectedProducts, product];
+            }
+        });
+    };
 
     const devolverProduto = async (order: Order) => {
         if (order.status === EOrderStatus.ENTREGUE) {
@@ -79,8 +134,11 @@ export default function OrdersPage() {
                     <div key={order.id} className="main-box border border-gray-200 rounded-xl pt-6 max-w-xl max-lg:mx-auto lg:max-w-full mb-8">
                         <div className="flex flex-col lg:flex-row lg:items-center justify-between px-6 pb-6 border-b border-gray-200">
                             <div className="data">
-                                <p className="font-semibold text-base leading-7 text-black">Id do Pedido: <span className="text-indigo-600 font-medium">#{order.id}</span></p>
+                                <p id={`id-pedido-${order.id}`} className="font-semibold text-base leading-7 text-black">Id do Pedido: <span className="text-indigo-600 font-medium">#{order.id}</span></p>
                                 <p className="font-semibold text-base leading-7 text-black mt-4">Data do Pagamento: <span className="text-gray-600 font-medium">{new Date(order.orderedOn).toLocaleDateString('pt-BR')}</span></p>
+                            </div>
+                            <div className="flex gap-3 lg:block">
+                                <p className="font-semibold text-base leading-7 text-black mt-4">Status: <span className="text-gray-600 font-medium">{order.status}</span></p>
                             </div>
                             <div>
                                 <p className="font-semibold text-base leading-7 text-black">Cupons utilizados:</p>
@@ -116,26 +174,17 @@ export default function OrdersPage() {
                                             </div>
                                             <div className="grid grid-cols-5">
                                                 <div className="col-span-5 lg:col-span-1 flex items-center max-lg:mt-3">
-                                                    <div className="flex gap-3 lg:block">
+                                                    <div className="flex gap-5 lg:block">
                                                         <p className="font-medium text-sm leading-7 text-black">Preço</p>
                                                         <p className="lg:mt-4 font-medium text-sm leading-7 text-indigo-600">R$ {orderItem.value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
                                                     </div>
                                                 </div>
-                                                <div className="col-span-5 lg:col-span-2 flex items-center max-lg:mt-3 ">
-                                                    <div className="flex gap-3 lg:block">
-                                                        <p className="font-medium text-sm leading-7 text-black">Status</p>
-                                                        <p>{order.status}</p>
-                                                    </div>
-                                                </div>
-                                                <div className="col-span-5 lg:col-span-2 flex items-center max-lg:mt-3">
-                                                    <div className="flex gap-3 lg:block">
-                                                        <button
-                                                            id="btn-troca"
-                                                            className='bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded mt-4'
-                                                            onClick={() => trocarProduto(order)}
-                                                        >
-                                                            Troca
-                                                        </button>
+                                                <div></div>
+                                                <div></div>
+                                                <div className="col-span-5 lg:col-span-1 flex items-center max-lg:mt-3">
+                                                    <div className="flex gap-5 lg:block">
+                                                        <p className="font-medium text-sm leading-7 text-black">Subtotal</p>
+                                                        <p className="lg:mt-4 font-medium text-sm leading-7 text-indigo-600">R$ {(orderItem.value * orderItem.quantity).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
                                                     </div>
                                                 </div>
                                             </div>
@@ -167,8 +216,15 @@ export default function OrdersPage() {
                                     ))}
                                 </div>
                                 <button
+                                    id="btn-troca"
+                                    className='ml-80 mr-4 bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded'
+                                    onClick={() => trocarProduto(order)}
+                                >
+                                    Troca
+                                </button>
+                                <button
                                     id="btn-devolucao"
-                                    className='ml-96 bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded'
+                                    className=' bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded'
                                     onClick={() => devolverProduto(order)}
                                 >
                                     Devolução
@@ -179,6 +235,35 @@ export default function OrdersPage() {
                     </div>
                 ))}
             </div>
+            {isModalOpen && (
+                <div className="fixed inset-0 flex items-center justify-center z-50">
+                    <div className="absolute inset-0 bg-gray-900 opacity-50"></div>
+                    <div className="bg-white p-6 md:w-1/2 lg:w-1/3 rounded-lg shadow-lg z-10">
+                        <h2 className="text-xl font-semibold mb-4">Selecionar Produtos para Troca</h2>
+                        {selectedOrder && selectedOrder.orderItens.map((orderItem, index) => (
+                            <div key={index} className="mb-4">
+                                <label className="flex items-center">
+                                    <input
+                                        type="checkbox"
+                                        checked={selectedProducts.includes(orderItem)}
+                                        onChange={() => toggleProductSelection(orderItem)}
+                                        className="mr-2"
+                                    />
+                                    <span>{orderItem.book.name} - {orderItem.book.author}</span>
+                                </label>
+                            </div>
+                        ))}
+                        <div className="flex justify-between">
+                            <button onClick={() => setIsModalOpen(false)} className="px-4 py-2 mr-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400 focus:outline-none">
+                                Cancelar
+                            </button>
+                            <button onClick={() => confirmarTroca()} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 focus:outline-none">
+                                Confirmar Troca
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </section>
     );
 };  

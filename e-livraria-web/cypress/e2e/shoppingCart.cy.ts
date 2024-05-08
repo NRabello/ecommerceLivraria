@@ -1,7 +1,7 @@
 describe('Checkout Process', () => {
     beforeEach(() => {
         cy.viewport(1280, 1024);
-        cy.visit('/book/shop/1'); // Supondo que a página está disponível em '/'
+        cy.visit('/book/shop/1');
         cy.get('#btn-addToCart').click();
         cy.wait(1000);
     });
