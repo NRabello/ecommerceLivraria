@@ -1,4 +1,4 @@
-package com.nrabello.ecommerceLivraria.strategy.Order;
+package com.nrabello.ecommerceLivraria.strategy.order;
 
 import com.nrabello.ecommerceLivraria.database.OrderDao;
 import com.nrabello.ecommerceLivraria.model.Order;

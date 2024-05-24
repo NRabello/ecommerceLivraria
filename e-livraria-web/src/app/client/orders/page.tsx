@@ -5,7 +5,9 @@ import { OrderService } from '@/services/OrderService';
 import { EOrderStatus } from '@/models/EOrderStatus';
 import { useRouter } from 'next/navigation';
 import { OrderItem } from '@/models/OrderItem';
+import { RequestTradeDevolution } from '@/models/RequestTradeDevolution';
 import { PaymentMethod } from '@/models/PaymentMethod';
+import { RequestTradeDevolutionService } from '@/services/RequestTradeDevolutionService';
 
 export default function OrdersPage() {
     const router = useRouter();
@@ -13,8 +15,9 @@ export default function OrdersPage() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
     const [selectedProducts, setSelectedProducts] = useState<OrderItem[]>([]);
+    const [selectedQuantities, setSelectedQuantities] = useState<{ [key: number]: number }>({});
     const orderService = new OrderService();
-
+    const requestTradeDevolutionService = new RequestTradeDevolutionService();
 
 
     useEffect(() => {
@@ -30,7 +33,7 @@ export default function OrdersPage() {
     };
 
     const CancelarCompra = async (order: Order) => {
-        if (order.status === EOrderStatus.ENTREGUE) {
+        if (order.status !== EOrderStatus.EM_PROCESSAMENTO && order.status !== EOrderStatus.APROVADA && order.status !== EOrderStatus.EM_TRANSPORTE) {
             alert('Pedido já entregue, não é possível cancelar!');
             return;
         }
@@ -52,46 +55,59 @@ export default function OrdersPage() {
         setIsModalOpen(true);
     }
 
+    const enviarItens = (order: Order) => {
+        if (order.status === EOrderStatus.TROCA_AUTORIZADA) {
+            if (window.confirm('Tem certeza de que deseja enviar itens para troca?')) {
+                order.status = EOrderStatus.ITENS_ENVIADOS_TROCA;
+                orderService.save(order).then(() => {
+                    alert('Itens enviados com sucesso!');
+                    fetchOrders();
+                }).catch((error) => {
+                    alert('Erro ao enviar itens!: ' + error);
+                });
+            }
+        } else if (order.status === EOrderStatus.DEVOLUCAO_AUTORIZADA) {
+            if (window.confirm('Tem certeza de que deseja enviar itens para devolução?')) {
+                order.status = EOrderStatus.ITENS_ENVIADOS_DEVOLUCAO;
+                orderService.save(order).then(() => {
+                    alert('Itens enviados com sucesso!');
+                    fetchOrders();
+                }).catch((error) => {
+                    alert('Erro ao enviar itens!: ' + error);
+                });
+            }
+        } else {
+            alert('Pedido não está apto para envio de itens!');
+        }
+    }
+
     const confirmarTroca = async () => {
         if (selectedOrder && selectedOrder.status === EOrderStatus.ENTREGUE) {
             if (window.confirm('Tem certeza de que deseja trocar o pedido?')) {
-                if(selectedProducts.length === selectedOrder.orderItens.length){
                     selectedOrder.status = EOrderStatus.EM_TROCA;
+                    const newItens: OrderItem[] = selectedProducts.map(product => {
+                        const quantity = selectedQuantities[product.id] || 1;
+                        return new OrderItem({
+                            id: product.id,
+                            book: product.book,
+                            quantity: quantity,
+                            value: product.value
+                        });
+                    });
+                    const requestValue = newItens.reduce((acc, item) => acc + item.value * item.quantity, 0);
+                    const requestTradeDevolution = new RequestTradeDevolution({
+                        order: selectedOrder,
+                        active: true,
+                        requestItens: newItens,
+                        date: new Date(),
+                        value: (requestValue - (requestValue * selectedOrder.promotionalCoupon.value / 100))
+                    });
+                    console.log(requestTradeDevolution);
                     await orderService.save(selectedOrder);
+                    await requestTradeDevolutionService.save(requestTradeDevolution);
                     fetchOrders()
                     alert("Solicitação de troca realizada com sucesso!")
                     setIsModalOpen(false);
-                }else{
-                    const newOrder = new Order(selectedOrder);
-                    const updatedSelectedOrder = selectedOrder;
-                    newOrder.id = 0;
-                    newOrder.status = EOrderStatus.APROVADA;
-                    newOrder.orderItens = []
-                    selectedProducts.forEach(product => {
-                        newOrder.orderItens.push(
-                            new OrderItem({
-                                book: product.book,
-                                quantity: product.quantity,
-                                value: product.value
-                            })
-                        );
-                    });
-                    newOrder.paymentMethods = []
-                    selectedOrder.paymentMethods.forEach(paymentMethod =>{
-                        newOrder.paymentMethods.push(
-                            new PaymentMethod({
-                                creditCard: paymentMethod.creditCard,
-                                value: paymentMethod.value 
-                            })
-                        )
-                    })
-                    updatedSelectedOrder.status = EOrderStatus.TROCADO;
-                    await orderService.save(newOrder);
-                    await orderService.save(updatedSelectedOrder);
-                    fetchOrders();
-                    alert("Solicitação de troca realizada com sucesso!")
-                    setIsModalOpen(false);
-                }
             } else {
                 return;
             }
@@ -102,12 +118,27 @@ export default function OrdersPage() {
 
     const toggleProductSelection = (product: OrderItem) => {
         setSelectedProducts(prevSelectedProducts => {
-            if (prevSelectedProducts.includes(product)) {
-                return prevSelectedProducts.filter(id => id !== product);
+            if (prevSelectedProducts.some(item => item.id === product.id)) {
+                setSelectedQuantities(prevQuantities => {
+                    const { [product.id]: _, ...rest } = prevQuantities;
+                    return rest;
+                });
+                return prevSelectedProducts.filter(item => item.id !== product.id);
             } else {
+                setSelectedQuantities(prevQuantities => ({
+                    ...prevQuantities,
+                    [product.id]: 1
+                }));
                 return [...prevSelectedProducts, product];
             }
         });
+    };
+
+    const updateProductQuantity = (product: OrderItem, quantity: number) => {
+        setSelectedQuantities(prevQuantities => ({
+            ...prevQuantities,
+            [product.id]: quantity
+        }));
     };
 
     const devolverProduto = async (order: Order) => {
@@ -215,9 +246,18 @@ export default function OrdersPage() {
                                         </div>
                                     ))}
                                 </div>
+                                {(order.status === EOrderStatus.TROCA_AUTORIZADA || order.status === EOrderStatus.DEVOLUCAO_AUTORIZADA) && (
+                                    <button
+                                        id="btn-enviar-itens"
+                                        className='ml-32 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded'
+                                        onClick={() => enviarItens(order)}
+                                    >
+                                        Enviar Itens
+                                    </button>
+                                )}
                                 <button
                                     id="btn-troca"
-                                    className='ml-80 mr-4 bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded'
+                                    className='ml-28 mr-4 bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded'
                                     onClick={() => trocarProduto(order)}
                                 >
                                     Troca
@@ -250,6 +290,16 @@ export default function OrdersPage() {
                                         className="mr-2"
                                     />
                                     <span>{orderItem.book.name} - {orderItem.book.author}</span>
+                                    {selectedProducts.includes(orderItem) && (
+                                        <input
+                                            type="number"
+                                            min="1"
+                                            max={orderItem.quantity}
+                                            value={selectedQuantities[orderItem.id] || 1}
+                                            onChange={(e) => updateProductQuantity(orderItem, parseInt(e.target.value))}
+                                            className="ml-4 p-1 border rounded"
+                                        />
+                                    )}
                                 </label>
                             </div>
                         ))}

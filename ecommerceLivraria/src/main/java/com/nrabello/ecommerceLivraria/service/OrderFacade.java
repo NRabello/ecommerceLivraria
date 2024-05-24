@@ -2,9 +2,9 @@ package com.nrabello.ecommerceLivraria.service;
 
 import com.nrabello.ecommerceLivraria.model.Client;
 import com.nrabello.ecommerceLivraria.model.Order;
-import com.nrabello.ecommerceLivraria.strategy.Order.FindAllOrdersStrategy;
-import com.nrabello.ecommerceLivraria.strategy.Order.FindOrdersByClientStrategy;
-import com.nrabello.ecommerceLivraria.strategy.Order.SaveOrderStrategy;
+import com.nrabello.ecommerceLivraria.strategy.order.FindAllOrdersStrategy;
+import com.nrabello.ecommerceLivraria.strategy.order.FindOrdersByClientStrategy;
+import com.nrabello.ecommerceLivraria.strategy.order.SaveOrderStrategy;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;

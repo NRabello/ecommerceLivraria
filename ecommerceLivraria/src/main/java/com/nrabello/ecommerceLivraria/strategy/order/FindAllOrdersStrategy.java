@@ -1,4 +1,4 @@
-package com.nrabello.ecommerceLivraria.strategy.Order;
+package com.nrabello.ecommerceLivraria.strategy.order;
 
 import com.nrabello.ecommerceLivraria.database.OrderDao;
 import com.nrabello.ecommerceLivraria.model.Order;
@@ -8,15 +8,14 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 
-
 @Component
-public class FindOrdersByClientStrategy implements IStrategy<Order> {
+public class FindAllOrdersStrategy implements IStrategy<Order> {
 
     @Autowired
-    OrderDao dao;
+    OrderDao orderDao;
 
     @Override
     public List<Order> process(Order model) {
-        return dao.findAllByClient(model.getClient().getId());
+        return orderDao.findAll();
     }
 }

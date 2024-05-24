@@ -35,6 +35,6 @@ public class PhoneDao {
     }
 
     public void delete(Phone phone) {
-        repository.save(phone);
+        repository.delete(phone);
     }
 }
