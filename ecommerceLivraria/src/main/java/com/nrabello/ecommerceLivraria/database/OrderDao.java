@@ -36,4 +36,8 @@ public class OrderDao {
     public List<Order> findAllByClient(Long id) {
         return repository.findAllByClient(id);
     }
+
+    public List<Order> findAllDash() {
+        return repository.findAllDash();
+    }
 }

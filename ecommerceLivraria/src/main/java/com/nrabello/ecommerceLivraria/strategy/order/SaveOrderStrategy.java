@@ -28,6 +28,10 @@ public class SaveOrderStrategy implements IStrategy<Order> {
             paymentMethod.setOrder(model);
         }
 
+        if(model.getPromotionalCoupon().getId() == 0){
+            model.setPromotionalCoupon(null);
+        }
+
         orderDao.save(model);
         return new ArrayList<>();
     }

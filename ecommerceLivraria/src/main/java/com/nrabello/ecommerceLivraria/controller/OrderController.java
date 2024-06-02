@@ -90,4 +90,14 @@ public class OrderController implements IOrderController {
             return new ResponseEntity<>(e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
+
+    @Override
+    @GetMapping(value = "/findDash")
+    public ResponseEntity<?> findDash() {
+        try {
+            return new ResponseEntity<>(facade.findOrdersDash(), HttpStatus.OK);
+        } catch (Exception e) {
+            return new ResponseEntity<>(e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
 }

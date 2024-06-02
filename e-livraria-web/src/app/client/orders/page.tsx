@@ -169,7 +169,7 @@ export default function OrdersPage() {
                                 <p className="font-semibold text-base leading-7 text-black mt-4">Data do Pagamento: <span className="text-gray-600 font-medium">{new Date(order.orderedOn).toLocaleDateString('pt-BR')}</span></p>
                             </div>
                             <div className="flex gap-3 lg:block">
-                                <p className="font-semibold text-base leading-7 text-black mt-4">Status: <span className="text-gray-600 font-medium">{order.status}</span></p>
+                                <p className="font-semibold text-base leading-7 text-black mt-4">Status: <span id={`status-${orderIndex}`}className="text-gray-600 font-medium">{order.status}</span></p>
                             </div>
                             <div>
                                 <p className="font-semibold text-base leading-7 text-black">Cupons utilizados:</p>
@@ -179,7 +179,7 @@ export default function OrdersPage() {
                                     </div>
                                 ))}
                                 <p>
-                                    {order.promotionalCoupon.name} : {order.promotionalCoupon.value}%
+                                    {order.promotionalCoupon?.name ? `${order.promotionalCoupon.name} : ${order.promotionalCoupon.value}%` : ''}
                                 </p>
                             </div>
                         </div>
@@ -263,7 +263,7 @@ export default function OrdersPage() {
                                     Troca
                                 </button>
                                 <button
-                                    id="btn-devolucao"
+                                    id={`btn-devolucao-${orderIndex}`}
                                     className=' bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded'
                                     onClick={() => devolverProduto(order)}
                                 >
@@ -284,6 +284,7 @@ export default function OrdersPage() {
                             <div key={index} className="mb-4">
                                 <label className="flex items-center">
                                     <input
+                                        id={`product-checkbox-${index}`}
                                         type="checkbox"
                                         checked={selectedProducts.includes(orderItem)}
                                         onChange={() => toggleProductSelection(orderItem)}
@@ -292,6 +293,7 @@ export default function OrdersPage() {
                                     <span>{orderItem.book.name} - {orderItem.book.author}</span>
                                     {selectedProducts.includes(orderItem) && (
                                         <input
+                                            id={`product-quantity-${index}`}
                                             type="number"
                                             min="1"
                                             max={orderItem.quantity}

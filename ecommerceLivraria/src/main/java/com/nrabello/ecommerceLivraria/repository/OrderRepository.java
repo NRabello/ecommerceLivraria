@@ -10,4 +10,8 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
     @Query("SELECT o FROM Order o WHERE o.client.id = :id AND o.status != 'CANCELADO' AND o.status != 'DEVOLVIDO'")
     List<Order> findAllByClient(Long id);
+
+    @Query("SELECT o FROM Order o WHERE o.status = 'ENTREGUE' ORDER BY o.orderedOn asc")
+    List<Order> findAllDash();
+
 }

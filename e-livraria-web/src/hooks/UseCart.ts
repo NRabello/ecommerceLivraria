@@ -45,6 +45,11 @@ export const useCart = () => {
     setCart(updatedCart as OrderItem[]);
   };
   const removeFromCart = (orderItemToRemove: OrderItem) => {
+    if(cart.length === 1){
+      console.log('entrou');
+      setCart([]);
+      return;
+    }
     setCart(prevCart => prevCart.filter(item => item !== orderItemToRemove));
   };
 

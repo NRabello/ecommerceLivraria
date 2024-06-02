@@ -5,4 +5,6 @@ import org.springframework.http.ResponseEntity;
 
 public interface IOrderController extends IController<Order>{
     ResponseEntity<?> findByClient(Long id);
+
+    ResponseEntity<?> findDash();
 }

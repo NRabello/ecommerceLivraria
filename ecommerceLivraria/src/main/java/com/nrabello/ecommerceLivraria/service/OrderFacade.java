@@ -2,6 +2,7 @@ package com.nrabello.ecommerceLivraria.service;
 
 import com.nrabello.ecommerceLivraria.model.Client;
 import com.nrabello.ecommerceLivraria.model.Order;
+import com.nrabello.ecommerceLivraria.strategy.order.FindAllOrdersDashStrategy;
 import com.nrabello.ecommerceLivraria.strategy.order.FindAllOrdersStrategy;
 import com.nrabello.ecommerceLivraria.strategy.order.FindOrdersByClientStrategy;
 import com.nrabello.ecommerceLivraria.strategy.order.SaveOrderStrategy;
@@ -13,6 +14,7 @@ import java.util.List;
 
 @Component
 public class OrderFacade implements IOrderFacade{
+
     @Autowired
     SaveOrderStrategy saveOrderStrategy;
 
@@ -21,6 +23,9 @@ public class OrderFacade implements IOrderFacade{
 
     @Autowired
     FindOrdersByClientStrategy findOrdersByClientStrategy;
+
+    @Autowired
+    FindAllOrdersDashStrategy findAllOrdersDashStrategy;
 
     @Override
     public void save(Order order) {
@@ -59,5 +64,10 @@ public class OrderFacade implements IOrderFacade{
         client.setId(id);
         order.setClient(client);
         return findOrdersByClientStrategy.process(order);
+    }
+
+    @Override
+    public List<Order> findOrdersDash() {
+        return findAllOrdersDashStrategy.process(new Order());
     }
 }

@@ -12,6 +12,9 @@ import { RequestTradeDevolution } from '@/models/RequestTradeDevolution';
 export default function AdminOrdersPage() {
     const router = useRouter();
     const [orders, setOrders] = useState<Order[]>([]);
+    const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+    const [tradeRequest, setTradeRequest] = useState<RequestTradeDevolution | null>(null);
+    const [modal, setModal] = useState(false);
     const [selectedStatus, setSelectedStatus] = useState<EOrderStatus>();
     const orderService = new OrderService();
     const tradeDevolutionCouponService = new TradeDevolutionCouponService();
@@ -144,6 +147,25 @@ export default function AdminOrdersPage() {
         }
     };
 
+    const openModal = (order: Order) => {
+        if ([EOrderStatus.TROCA_AUTORIZADA, EOrderStatus.TROCA_NEGADA, EOrderStatus.ITENS_ENVIADOS_TROCA, EOrderStatus.ITENS_RECEBIDOS_TROCA, EOrderStatus.EM_TROCA].includes(order.status)) {
+            requestTradeDevolutionService.findByOrder(order.id).then((response) => {
+                setTradeRequest(response.data[0]);
+                setModal(true);
+            }).catch(error => {
+                alert(`Erro ao buscar detalhes da solicitação de troca: ${error.message}`);
+            });
+        } else {
+            setSelectedOrder(order);
+            setModal(true);
+        }
+    }
+
+    const closeModal = () => {
+        setModal(false);
+        setSelectedOrder(null);
+        setTradeRequest(null);
+    }
     return (
         <section className="py-10 relative">
             <div className="w-full max-w-7xl px-4 md:px-5 lg-6 mx-auto">
@@ -170,10 +192,71 @@ export default function AdminOrdersPage() {
                                 </select>
                             </div>
                             <button id={`salvar-${index}`} onClick={() => saveStatusChange(order.id)} className="ml-4 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded">Salvar</button>
+                            <button id={`detalhes-${index}`} onClick={() => openModal(order)} className="ml-4 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded">Detalhes</button>
                         </div>
                     ))}
                 </div>
             </div>
+            {modal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-500 bg-opacity-75">
+                    <div className="bg-white min-h-80 w-max min-w-96 flex flex-col p-6 rounded-lg shadow-xl">
+                        {tradeRequest ? (
+                            <div>
+                                <h2 className="text-2xl font-bold mb-4">Detalhes da Solicitação de Troca</h2>
+                                    <p className="mb-2"><strong>Cliente:</strong> {tradeRequest.order.client.name}</p>
+                                    <p className="mb-2"><strong>Data Pedido:</strong> {new Date(tradeRequest.order.orderedOn).toLocaleDateString()}</p>
+                                    <hr/>
+                                <p className="mb-2"><strong>Data Solicitação:</strong> {new Date(tradeRequest.date).toLocaleDateString()}</p>
+                                <p className="mb-2"><strong>Valor:</strong> R$ {tradeRequest.value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+                                <hr/>
+                                <h3 className="text-xl font-semibold mt-4 mb-2">Itens:</h3>
+                                {tradeRequest.requestItens.map(item => (
+                                    <div key={item.id} className="mb-4">
+                                        <p><strong>Livro:</strong> {item.book.name}</p>
+                                        <p><strong>Quantidade:</strong> {item.quantity}</p>
+                                        <p><strong>Valor:</strong> R$ {item.value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            selectedOrder && (
+                                <div>
+                                    <h2 className="text-2xl font-bold mb-4 ">Detalhes do Pedido</h2>
+                                    <p className="mb-2"><strong>Cliente:</strong> {selectedOrder.client.name}</p>
+                                    <p className="mb-2"><strong>Data:</strong> {new Date(selectedOrder.orderedOn).toLocaleDateString()}</p>
+                                    <p className="mb-2"><strong>Valor Total:</strong> R$ {selectedOrder.totalValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+                                    <hr/>
+                                    <h3 className="text-xl font-semibold mt-2 mb-2">Itens:</h3>
+                                    {selectedOrder.orderItens.map(item => (
+                                        <div key={item.id} className="mb-4">
+                                            <p><strong>Livro:</strong> {item.book.name}</p>
+                                            <p><strong>Quantidade:</strong> {item.quantity}</p>
+                                            <p><strong>Valor:</strong> R$ {item.value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+                                        </div>
+                                    ))}
+                                    <hr/>
+                                    <h3 className="text-xl font-semibold mt-4 mb-2">Métodos de Pagamento:</h3>
+                                    {selectedOrder.paymentMethods.map(method => (
+                                        <div key={method.id} className="mb-4">
+                                            <p><strong>Cartão:</strong> {method.creditCard.number}</p>
+                                            <p><strong>Valor:</strong> R$ {method.value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+                                        </div>
+                                    ))}
+                                    <hr/>
+                                    {selectedOrder.promotionalCoupon && (
+                                        <div>
+                                            <h3 className="text-xl font-semibold mt-4 mb-2">Cupom Promocional:</h3>
+                                            <p><strong>Nome:</strong> {selectedOrder.promotionalCoupon.name}</p>
+                                            <p><strong>Valor:</strong> R$ {selectedOrder.promotionalCoupon.value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+                                        </div>
+                                    )}
+                                </div>
+                            )
+                        )}
+                        <button onClick={closeModal} className="mt-4 bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded">Fechar</button>
+                    </div>
+                </div>
+            )}
         </section>
     );
 };

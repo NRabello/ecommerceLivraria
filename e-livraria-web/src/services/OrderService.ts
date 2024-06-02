@@ -34,4 +34,8 @@ export class OrderService {
     update(order: Order) {
         return axiosInstance.put("/order/update", order);
     }
+
+    findDash(){
+        return axiosInstance.get("/order/findDash");
+    }
 }
