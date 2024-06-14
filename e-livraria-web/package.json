@@ -21,7 +21,8 @@
     "react": "^18",
     "react-dom": "^18",
     "react-hook-form": "^7.51.1",
-    "react-input-mask": "^3.0.0-alpha.2"
+    "react-input-mask": "^3.0.0-alpha.2",
+    "react-tooltip": "^5.26.4"
   },
   "devDependencies": {
     "@types/node": "^20",
