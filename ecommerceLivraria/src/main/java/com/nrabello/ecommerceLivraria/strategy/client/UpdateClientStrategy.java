@@ -18,7 +18,7 @@ import java.util.Optional;
 public class UpdateClientStrategy implements IStrategy<Client> {
 
     @Autowired
-    ClientDao clientDao;
+    ClientDao dao;
 
     @Autowired
     private ValidateClientStrategy validateClientStrategy;
@@ -27,9 +27,7 @@ public class UpdateClientStrategy implements IStrategy<Client> {
     @Transactional(rollbackFor = Exception.class)
     public List<Client> process(Client model) {
 
-        Optional<Client> opClient= clientDao.findById(model.getId());
-
-        if(opClient.isPresent()){
+        if(dao.findById(model.getId()).isPresent()){
             model.getPhone().setClient(model);
 
             for(ChargeAddress chargeAddress: model.getChargeAddresses()){
@@ -44,9 +42,15 @@ public class UpdateClientStrategy implements IStrategy<Client> {
                 creditCard.setClient(model);
             }
 
+            if(model.getPassword().trim().equals("")){
+                model.setPassword(dao.findById(model.getId()).get().getPassword());
+            }
+
             Client validateClient = validateClientStrategy.process(model).get(0);
 
-            clientDao.update(validateClient);
+
+            dao.update(validateClient);
+
 
         }else{
             throw new RuntimeException("Cliente não encontrado");

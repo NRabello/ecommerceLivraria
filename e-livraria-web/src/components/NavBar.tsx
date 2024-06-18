@@ -1,10 +1,11 @@
 "use client";
-import { Fragment, useEffect, useRef, useState } from 'react'
+import { Fragment, useState } from 'react'
 import { Disclosure, Menu, Transition } from '@headlessui/react'
 import { Bars3Icon, BellIcon, XMarkIcon } from '@heroicons/react/24/outline'
 import { useRouter } from 'next/navigation';
 import ShoppingCart from '@/components/ShoppingCart';
 import Image from 'next/image';
+import Chat from './chat';
 
 function classNames(...classes: string[]) {
   return classes.filter(Boolean).join(' ')
@@ -12,10 +13,14 @@ function classNames(...classes: string[]) {
 
 export default function NavBar() {
   const router = useRouter();
-  const [showComponent, setShowComponent] = useState(false)
+  const [showCartComponent, setShowCartComponent] = useState(false)
+  const [showChatComponent, setShowChatComponent] = useState(false)
 
-  const handleShowComponent = () => {
-    setShowComponent(!showComponent)
+  const handleShowCartComponent = () => {
+    setShowCartComponent(!showCartComponent)
+  }
+  const handleShowChatComponent = () => {
+    setShowChatComponent(!showChatComponent)
   }
   return (
     <div>
@@ -109,8 +114,8 @@ export default function NavBar() {
                       </Menu.Items>
                     </Transition>
                   </Menu>
-                  <button id="cart-button" onClick={handleShowComponent}>
-                  <Image
+                  <button id="cart-button" onClick={handleShowCartComponent}>
+                    <Image
                       className='ml-4 mb-1'
                       src={"/shopping-cart.png"}
                       alt="Livraria Caleidoscópio"
@@ -118,7 +123,17 @@ export default function NavBar() {
                       height={32}
                     />
                   </button>
-                    {showComponent && <ShoppingCart/>}
+                  {showCartComponent && <ShoppingCart />}
+                  <button id="chat-button" onClick={handleShowChatComponent}>
+                    <Image
+                      className='ml-4 mb-1'
+                      src={"/chat.png"}
+                      alt="Livraria Caleidoscópio"
+                      width={32}
+                      height={32}
+                    />
+                  </button>
+                  {showChatComponent && <Chat isOpen={showChatComponent} setIsOpen={setShowChatComponent} />}
                 </div>
               </div>
             </div>
