@@ -1,17 +1,16 @@
 'use client'
-import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
-import { Button } from "./ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "./ui/card";
-import { Input } from "./ui/input";
-import { ScrollArea } from "./ui/scroll-area";
 import { useState, ChangeEvent, FormEvent, useEffect } from "react";
-import { Dialog, Transition } from '@headlessui/react'
-import axios from 'axios';
-import { Fragment } from 'react';
+import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { XMarkIcon } from '@heroicons/react/24/outline';
+import { Dialog, Transition } from '@headlessui/react'
 import { BookService } from "@/services/BookService";
-import { Book } from "@/models/Book";
+import { ScrollArea } from "./ui/scroll-area";
 import ReactMarkdown from 'react-markdown';
+import { Book } from "@/models/Book";
+import { Button } from "./ui/button";
+import { Input } from "./ui/input";
+import { Fragment } from 'react';
+import axios from 'axios';
 
 interface Message {
     id: number;
@@ -85,7 +84,7 @@ export default function Chat({ isOpen, setIsOpen }: ChatProps) {
                 `[Comprar Agora](${book.link})`
             ).join('\n\n\n');
         }
-        // Adicionar a função no requestBody
+
         requestBody.messages.push({
             role: 'assistant',
             content: generateBookResponse(books)
@@ -94,7 +93,7 @@ export default function Chat({ isOpen, setIsOpen }: ChatProps) {
         try {
             const response = await axios.post('https://api.openai.com/v1/chat/completions', requestBody, {
                 headers: {
-                    'Authorization': 'Bearer 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',  // Replace with your actual API key
+                    'Authorization': 'Bearer APY_KEY',  // Replace with your actual API key
                     'Content-Type': 'application/json'
                 }
             });
